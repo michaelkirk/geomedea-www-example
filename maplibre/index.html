@@ -31,32 +31,44 @@
         #map { height: 480px; }
     </style>
     <div id="map"></div>
+    <p>
+    This basic example shows how to render all the features in a Geomedea
+    onto a <a href="https://maplibre.org/maplibre-gl-js-docs/">MapLibre</a> map.  It shows
+    per-feature properties when you click on each feature. This will work almost exactly
+    the same for Mapbox GL JS, just add an account key and load the Mapbox libraries instead.
+    </p>
 <script type="module">
-    import init, * as wasm from "../../node_modules/geomedea/geomedea.js";
-    window.getFeatureCollection = async () => {
-        await init("../../node_modules/geomedea/geomedea_bg.wasm");
+import initWasm, { HttpReader } from "../../node_modules/geomedea/geomedea.js";
 
-        let relativeInput = "/../../../files/test_fixtures/USCounties-compressed.geomedea";
-        // let relativeInput = "/../../../files/test_fixtures/USCounties-uncompressed.geomedea";
-        function makeAbsolute(relativePath) {
-            let siteOrigin = window.location.href;
-            let absolute = siteOrigin + relativeInput;
-            return new URL(absolute).toString()
-        }
-        let input = makeAbsolute(relativeInput);
+// NOTE: wasm module must be initialized before being used (this is async)
+let wasmLoaded = false;
+(async () => {
+    await initWasm();
+    wasmLoaded = true;
+})();
 
-        let httpReader = new wasm.HttpReader(input);
-        let featureCollectionString = await httpReader.select_all();
-        const featureCollection = JSON.parse(featureCollectionString);
-        let i = 1;
-        for (let feature of featureCollection.features) {
-            i+=1;
-            feature['id'] = i;
-        }
-        return featureCollection;
-    };
-</script>
-<script>
+async function getFeatureCollection() {
+    console.assert(wasmLoaded);
+    let relativeInput = "/../../../files/test_fixtures/USCounties-compressed.geomedea";
+    // let relativeInput = "/../../../files/test_fixtures/USCounties-uncompressed.geomedea";
+    function makeAbsolute(relativePath) {
+        let siteOrigin = window.location.href;
+        let absolute = siteOrigin + relativeInput;
+        return new URL(absolute).toString()
+    }
+    let input = makeAbsolute(relativeInput);
+
+    let httpReader = new HttpReader(input);
+    let featureCollectionString = await httpReader.select_all();
+    const featureCollection = JSON.parse(featureCollectionString);
+    let i = 1;
+    for (let feature of featureCollection.features) {
+        i+=1;
+        feature['id'] = i;
+    }
+    return featureCollection;
+};
+
 document.addEventListener("DOMContentLoaded", async () => {
     // basic MapLibre map
     const map = new maplibregl.Map({
@@ -68,7 +80,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     map.on("load", async () => {
-        const featureCollection = await window.getFeatureCollection();
+        const featureCollection = await getFeatureCollection();
         map.addSource("counties", {
             type: "geojson",
             data: featureCollection,
@@ -140,13 +152,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 });
 </script>
-
-    <p>
-    This basic example shows how to render all the features in a Geomedea
-    onto a <a href="https://maplibre.org/maplibre-gl-js-docs/">MapLibre</a> map.  It shows
-    per-feature properties when you click on each feature. This will work almost exactly
-    the same for Mapbox GL JS, just add an account key and load the Mapbox libraries instead.
-    </p>
-
 </body>
 </html>
